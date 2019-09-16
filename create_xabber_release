@@ -1,0 +1,99 @@
+#!/bin/bash
+
+###-------------------------------------------------------------------
+### File    : create_xabber_server
+### Author  : Andrey Gagarin <andrey.gagarin@redsolution.com>
+### Created : 16 Jul 2018 by Andrey Gagarin <andrey.gagarin@redsolution.com>
+###
+###
+### Copyright (C) 2007-2019   Redsolution OÜ
+###
+### This program is free software: you can redistribute it and/or
+### modify it under the terms of the GNU Affero General Public License as
+### published by the Free Software Foundation, either version 3 of the
+### License, or (at your option) any later version.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+### General Public License for more details.
+###-------------------------------------------------------------------
+
+function get_xabber_web() {
+cd $root_dir
+rm -fr xabber-web
+echo "Get a new custom xabber web"
+git clone https://github.com/redsolution/xabber-web.git
+cd xabber-web
+git checkout xabber-server
+cp -r $root_dir/xabber-web/images/ $install_path/xmppserverui/static/xabberweb/
+cp -r $root_dir/xabber-web/fonts/ $install_path/xmppserverui/static/xabberweb/
+cp -r $root_dir/xabber-web/dist/ $install_path/xmppserverui/static/xabberweb/
+cp -r $root_dir/xabber-web/sounds/ $install_path/xmppserverui/static/xabberweb/
+cp -r $root_dir/xabber-web/css/ $install_path/xmppserverui/static/xabberweb/
+cp -r $root_dir/xabber-web/quill.js $install_path/xmppserverui/static/xabberweb/
+cp -r $root_dir/xabber-web/quill.snow.css $install_path/xmppserverui/static/xabberweb/
+cp -r $root_dir/xabber-web/firebase-messaging-sw.js $install_path/xmppserverui/static/xabberweb/
+cp -r $root_dir/xabber-web/manifest.json $install_path/xmppserverui/static/xabberweb/
+cp -r $root_dir/xabber-web/version.js $install_path/xmppserverui/static/xabberweb/
+}
+
+function get_makeself() {
+git clone https://github.com/redsolution/makeself.git
+}
+
+function install_ui() {
+echo "Clone xmppserverui"
+cd $install_path
+echo $install_path
+git clone https://github.com/redsolution/xabber-server-panel.git xmppserverui
+cd xmppserverui/
+git fetch
+	  
+echo "Build"
+buildout
+	    
+echo "Create directory for debug logs"
+mkdir gunicorn
+
+echo "Migrating database"
+bin/django migrate
+}
+
+function get_xabberxmppserver() {
+echo "Get xabber-xmpp-server"
+rm -fr xabberserver
+git clone https://github.com/redsolution/xabber-xmpp-server.git xabberserver
+cp $root_dir/xabber-server-files/ejabberd.yml.ORIG $install_path/etc/ejabberd/
+cd xabberserver
+./autogen.sh
+./configure --enable-pgsql
+make
+echo "make rel"
+make clean-rel
+make rel
+}
+
+root_dir=$(pwd)
+get_makeself
+makeself=$root_dir/makeself/makeself.sh
+get_xabberxmppserver
+install_path="$root_dir/xabberserver/rel/ejabberd"
+install_ui
+echo "Copy system libs and psql libs"
+cp -r $root_dir/xabber-server-files/psql_stuff/* $install_path/
+cp $root_dir/xabber-server-files/setup.sh $install_path/
+cp $root_dir/xabber-server-files/dig $install_path/
+cp $root_dir/xabber-server-files/xabber.text $install_path/
+cp $root_dir/xabber-server-files/server.pem $install_path/
+cp $root_dir/xabber-server-files/001-site.conf $install_path/
+cp $root_dir/xabber-server-files/001-site-ssl.conf $install_path/
+cp $root_dir/xabber-server-files/xabberserver.service0 $install_path/
+cp $root_dir/xabber-server-files/xabberserver.init0 $install_path/
+cp $root_dir/xabber-server-files/erl $install_path/erts-8.2.1/bin/erl
+cp $root_dir/xabber-server-files/ejabberdctl $install_path/bin/ejabberdctl
+cp -r $root_dir/xabber-server-files/linux/* $install_path/lib/
+rm $install_path/etc/ejabberd/ejabberd.yml
+get_xabber_web
+cd $root_dir
+$makeself $install_path xabberserver_installer.bin "Xabber Server Installer" ./setup.sh
