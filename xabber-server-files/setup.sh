@@ -697,11 +697,14 @@ fi
     EXP00="s#INSTALL_PATH#$installdir#g"
     EXP01="s#USER#$systemuser#g"
     EXP02="s#GROUP#'$GROUP'#g"
+    EXP03="s#DEBUG=true#DEBUG=false#g"
     sh -c "sed -e $EXP00 <$installdir/xabberserver.service0 >$installdir/xabberserver.service1"
     sh -c "sed -e $EXP01 <$installdir/xabberserver.service1 >$installdir/xabberserver.service"
     sh -c "sed -e $EXP02 <$installdir/xabberserver.service >/etc/systemd/system/xabberserver.service"
-    sh -c "sed -e $EXP00 <$installdir/xabberserver.init0 >$installdir/xmppserverui/service.sh"
-    rm $installdir/xabberserver.init0
+    sh -c "sed -e $EXP00 <$installdir/xmppserverui/service.sh.template >$installdir/xmppserverui/service.sh.2"
+    sh -c "sed -e $EXP03 <$installdir/xmppserverui/service.sh.2 >$installdir/xmppserverui/service.sh"
+    rm $installdir/xmppserverui/service.sh.2
+    rm $installdir/xmppserverui/service.sh.template
     rm $installdir/xabberserver.service
     rm $installdir/xabberserver.service1
     rm $installdir/xabberserver.service0
@@ -725,8 +728,11 @@ echo "Installation started"
     mkdir $installdir/certs
     mv $installdir/server.pem $installdir/certs
     EXP00="s#INSTALL_PATH#$installdir#g"
-    sh -c "sed -e $EXP00 <$installdir/xabberserver.init0 >$installdir/xmppserverui/service.sh"
-    rm $installdir/xabberserver.init0
+    EXP03="s#DEBUG=true#DEBUG=false#g"
+    sh -c "sed -e $EXP00 <$installdir/xmppserverui/service.sh.template >$installdir/xmppserverui/service.sh.2"
+    sh -c "sed -e $EXP03 <$installdir/xmppserverui/service.sh.2 >$installdir/xmppserverui/service.sh"
+    rm $installdir/xmppserverui/service.sh.2
+    rm $installdir/xmppserverui/service.sh.template
     rm $installdir/xabberserver.service0
     rm $installdir/setup.sh
     chmod 755 $installdir/xmppserverui/service.sh
