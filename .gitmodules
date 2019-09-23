@@ -1,0 +1,3 @@
+[submodule "create-release"]
+	path = create-release
+	url = https://github.com/redsolution/create-release.git
