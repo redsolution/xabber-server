@@ -238,7 +238,7 @@ exit 2
 
 function check_srv() {
 XABBER="xabber.$DOMAIN"
-IPNOW=$( hostname -I )
+IPNOW=$( ./dig +short myip.opendns.com @resolver1.opendns.com )
 AREC="A record for $XABBER"
 SRVClient="SRV record for client"
 SRVServer="SRV record for server"
@@ -546,7 +546,7 @@ menu
 echo "Installation finished"
 }
 
-function print_instructions() 
+function print_instructions()
 {
  IP=$( hostname -I )
  HOSTS=$( hostname -f )
@@ -554,7 +554,7 @@ function print_instructions()
  echo "Welcome to Xabber server."
  for item in ${IP[*]}
  do
-  if [ -f $CERT_FILE ]	 
+  if [ -f $CERT_FILE ]
   then
   printf "To continue installation process, open https://%s:8000\n" $item
   else
@@ -563,7 +563,7 @@ function print_instructions()
  done
  for hst in ${HOSTS[*]}
  do
-  if [ -f $CERT_FILE ]	 
+  if [ -f $CERT_FILE ]
   then
   printf "To continue installation process, open https://%s:8000\n" $hst
   else
@@ -659,7 +659,7 @@ web_install
 function install_regime()
 {
 echo "Select the appropriate installation type:"
-echo "1) Quick ( ${BOLD}Use only on fresh installed system!${NORMAL} )"
+echo "1) Quick ( ${BOLD}Use only on fresh installed Debian-based GNU/Linux system!${NORMAL} )"
 echo "2) Advanced"
 echo "0) Exit"
 choice=''
@@ -715,7 +715,7 @@ fi
 }
 
 function install_in_home()
-{   
+{
 echo "Installation started"
     installpath=$HOME
     systemuser=$USER
@@ -737,7 +737,7 @@ echo "Installation started"
     rm $installdir/setup.sh
     chmod 755 $installdir/xmppserverui/service.sh
     chown -R $systemuser:"$GROUP" $installdir
-    echo "To start xabberserver use:" 
+    echo "To start xabberserver use:"
     echo "$installdir/xmppserverui/service.sh start"
 }
 
