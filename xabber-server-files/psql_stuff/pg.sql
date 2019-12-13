@@ -1,7 +1,6 @@
 --
--- Author Andrey Gagarin <andrey.gagarin@redsolution.ru>
--- Copyright: (C) 2018, Redsolution Inc.
--- XEP-0GGG: Group chats
+-- Author Andrey Gagarin <andrey.gagarin@redsolution.com>
+-- Copyright: (C) 2019,  Redsolution OÜ
 --
 
 CREATE TABLE users (
@@ -14,11 +13,6 @@ CREATE TABLE users (
     created_at TIMESTAMP NOT NULL DEFAULT now(),
     PRIMARY KEY (server_host, username)
 );
-
--- Add support for SCRAM auth to a database created before ejabberd 16.03:
--- ALTER TABLE users ADD COLUMN serverkey text NOT NULL DEFAULT '';
--- ALTER TABLE users ADD COLUMN salt text NOT NULL DEFAULT '';
--- ALTER TABLE users ADD COLUMN iterationcount integer NOT NULL DEFAULT 0;
 
 CREATE TABLE last (
     username text NOT NULL,
@@ -215,18 +209,6 @@ CREATE TABLE roster_version (
     version text NOT NULL,
     PRIMARY KEY (server_host, username)
 );
-
--- To update from 0.9.8:
--- CREATE SEQUENCE spool_seq_seq;
--- ALTER TABLE spool ADD COLUMN seq integer;
--- ALTER TABLE spool ALTER COLUMN seq SET DEFAULT nextval('spool_seq_seq');
--- UPDATE spool SET seq = DEFAULT;
--- ALTER TABLE spool ALTER COLUMN seq SET NOT NULL;
-
--- To update from 1.x:
--- ALTER TABLE rosterusers ADD COLUMN askmessage text;
--- UPDATE rosterusers SET askmessage = '';
--- ALTER TABLE rosterusers ALTER COLUMN askmessage SET NOT NULL;
 
 CREATE TABLE pubsub_node (
   host text NOT NULL,
@@ -455,6 +437,7 @@ CREATE TABLE groupchats (
     message bigint DEFAULT 0,
     contacts text,
     domains text,
+    status text NOT NULL DEFAULT 'active',
     parent_chat text DEFAULT '0',
     PRIMARY KEY (server_host, localpart)
 );
@@ -581,7 +564,8 @@ CREATE TABLE conversation_metadata(
     read_until text NOT NULL DEFAULT '0',
     delivered_until text NOT NULL DEFAULT '0',
     displayed_until text NOT NULL DEFAULT '0',
-    updated_at bigint NOT NULL,
+    updated_at bigint NOT NULL DEFAULT 0,
+    metadata_updated_at bigint NOT NULL DEFAULT 0,
     CONSTRAINT uc_conversation_metadata UNIQUE (username,server_host,conversation,conversation_thread)
     );
 
@@ -591,6 +575,7 @@ CREATE TABLE origin_id (
     id text NOT NULL,
     server_host text NOT NULL,
     stanza_id BIGINT,
+    username text,
     PRIMARY KEY (server_host, stanza_id),
     FOREIGN KEY (server_host, stanza_id) REFERENCES archive (server_host, timestamp) ON DELETE CASCADE
 );
@@ -644,7 +629,7 @@ ALTER TABLE sm ADD COLUMN token_uid text;
 
 CREATE TABLE special_messages(
 	    username text NOT NULL,
-    	    server_host text NOT NULL,
+    	server_host text NOT NULL,
 	    conversation text NOT NULL,
 	    timestamp BIGINT NOT NULL,
 	    type text NOT NULL DEFAULT 'chat',

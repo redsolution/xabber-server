@@ -13,9 +13,9 @@ ERLANG_NODE=ejabberd@localhost
 # define default environment variables
 SCRIPT_DIR=$(cd "${0%/*}" && pwd)
 FILE="$SCRIPT_DIR/blocked"
-ERL="${SCRIPT_DIR%/*}/erts-8.2.1/bin/erl"
+ERL="${SCRIPT_DIR%/*}/ERTS_VER/bin/erl"
 IEX="/iex"
-EPMD="${SCRIPT_DIR%/*}/erts-8.2.1/bin/epmd"
+EPMD="${SCRIPT_DIR%/*}/ERTS_VER/bin/epmd"
 INSTALLUSER=""
 
 # check the proper system user is used
