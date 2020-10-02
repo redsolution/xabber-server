@@ -1,0 +1,8 @@
+[panel]
+ip = 0.0.0.0
+port = 8000
+daemon = no
+pid_file = INSTALL_PATH/xabber_server.pid
+workers = 3
+debug = no
+log_dir =

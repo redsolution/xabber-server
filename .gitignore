@@ -1,4 +1,6 @@
+.idea/*
 xabberserver/
 xabber-web/
 makeself/
+panel-builder/
 xabberserver_installer*

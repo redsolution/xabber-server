@@ -3,17 +3,15 @@ Description=Xabber Server
 After=network.target
 
 [Service]
-Type=forking
 PIDFile=INSTALL_PATH/xabber_server.pid
 User=USER
 Group=GROUP
 LimitNOFILE=65536
 Restart=on-failure
 RestartSec=5
-ExecStart=INSTALL_PATH/xmppserverui/service.sh start
-ExecStop=INSTALL_PATH/xmppserverui/service.sh stop
-PrivateDevices=true
-ProtectSystem=full
+ExecStart=INSTALL_PATH/xmppserverui/xabber-server start
+ExecStop=INSTALL_PATH/xmppserverui/xabber-server stop
+
 
 [Install]
 WantedBy=multi-user.target

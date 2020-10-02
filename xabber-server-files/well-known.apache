@@ -1,0 +1,12 @@
+Alias /.well-known/acme-challenge/ "/var/www/html/.well-known/acme-challenge/"
+<Directory "/var/www/html/">
+AllowOverride None
+Options MultiViews Indexes SymLinksIfOwnerMatch IncludesNoExec
+Require method GET POST OPTIONS
+</Directory>
+<Directory /var/lib/letsencrypt/http_challenges>
+        Require all granted
+</Directory>
+<Location /.well-known/acme-challenge>
+        Require all granted
+</Location>

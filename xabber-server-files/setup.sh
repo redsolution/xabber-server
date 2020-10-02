@@ -25,6 +25,222 @@ DB='xabber_server_db'
 LOG='/dev/null'
 XABBER=''
 check=0
+installation_path=''
+final_installation_path=''
+new_ui_version=''
+new_xmpp_version=''
+new_xabber_web_version=''
+current_ui_version=''
+current_xmpp_version=''
+current_xabber_web_version=''
+db_migrations='db_migration'
+user=''
+group=''
+
+function restart_server() {
+echo "Reloading systemctl"
+sudo systemctl daemon-reload
+sudo systemctl start xabberserver.service
+}
+
+function upgrade_configs() {
+echo "Updating system files to new"
+mkdir -m 755 /etc/xabber/
+EXP00="s#INSTALL_PATH#$final_installation_path#g"
+EXP01="s#USER#$user#g"
+EXP02="s#GROUP#'$group'#g"
+sh -c "sed -e $EXP00 <$final_installation_path/xabberserver.service0 >$final_installation_path/xabberserver.service1"
+sh -c "sed -e $EXP01 <$final_installation_path/xabberserver.service1 >$final_installation_path/xabberserver.service"
+sh -c "sed -e $EXP02 <$final_installation_path/xabberserver.service >/etc/systemd/system/xabberserver.service"
+sh -c "sed -e $EXP00 <$final_installation_path/xabber_server.ini0 >/etc/xabber/xabber_server.ini"
+rm $final_installation_path/xabberserver.service
+rm $final_installation_path/xabberserver.service1
+rm $final_installation_path/xabberserver.service0
+rm $final_installation_path/xabber_server.ini0
+rm $final_installation_path/setup.sh
+chmod 755 /etc/xabber/xabber_server.ini
+}
+
+function full_upgrade_xmppserverui() {
+  echo "Upgrade xmppserverui"
+  cp $final_installation_path/xmppserverui/xmppserverui.sqlite3 $final_installation_path
+  rm -fr $final_installation_path/xmppserverui
+  cp -rp xmppserverui/ $final_installation_path
+  $final_installation_path/xmppserverui/xabber-server migrate
+  touch $final_installation_path/.installation_lock
+}
+
+function upgrade_xmpp() {
+set +e
+echo "Upgrade from " $current_xmpp_version " to " $new_xmpp_version
+lib_path="$final_installation_path/lib"
+echo $lib_path
+if [ "$final_installation_path" != "" ]; then
+if [ -d $lib_path ]; then
+  echo "Deleting old files"
+  rm -fr $final_installation_path/lib/*
+  rm -fr $final_installation_path/bin/*
+  rm -fr $final_installation_path/erts*
+  rm -fr $final_installation_path/var/lib/ejabberd/*
+  echo "Copy new files to " $final_installation_path
+  cp -rp *  $final_installation_path
+  chown -R $user:$group $final_installation_path
+  #find $final_installation_path -type f -exec chmod 644 {};
+  #find $final_installation_path -type d -exec chmod 755 {};
+  #find $final_installation_path/xmppserverui -maxdepth 1 -type f -exec chmod 755 {};
+  sql_migration
+  search_in_config
+fi
+fi
+}
+
+function sql_migration() {
+echo "Try to do SQL Migrations"
+CONFIG_FILE="$final_installation_path/etc/ejabberd/ejabberd.yml"
+if [ -f $CONFIG_FILE ]; then
+sql_server=$(grep sql_server $CONFIG_FILE | awk '{print $2}' | sed -e 's/"//g')
+sql_username=$(grep sql_username $CONFIG_FILE | awk '{print $2}' | sed -e 's/"//g')
+sql_password=$(grep sql_password $CONFIG_FILE | awk '{print $2}' | sed -e 's/"//g')
+sql_database=$(grep sql_database $CONFIG_FILE | awk '{print $2}' | sed -e 's/"//g')
+PGPASSWORD=$sql_password $final_installation_path/psql -U $sql_username -d $sql_database -h $sql_server -c '\l' > /dev/null
+  if [ $? -eq 0 ]; then
+    migrations=$(ls $db_migrations)
+    echo "Start database migration"
+    for migration in $migrations; do
+    ver=$(echo $migration | sed -e 's/.sql//g' )
+    res2=$(echo $ver $current_xmpp_version | awk  '{if ($2 >= $1) {print 0} else if ($2 < $1){ print 1}}')
+    if [ $res2 -eq 1 ]; then
+      echo "Migration database to " $ver
+      PGPASSWORD=$sql_password $final_installation_path/psql -U $sql_username -d $sql_database -h $sql_server -f $db_migrations/$migration
+    fi
+    done
+  else
+    "Cannot connect to database. Please do manual migration"
+  fi
+
+fi
+}
+
+function search_in_config() {
+CONFIG_FILE="$final_installation_path/etc/ejabberd/ejabberd.yml"
+if [ -f $CONFIG_FILE ]; then
+conf_migrations=$(ls config_migrations)
+for conf_migration in $conf_migrations; do
+    ver=$(echo $conf_migration | sed -e 's/.sh//g' )
+    res2=$(echo $ver $current_xmpp_version | awk  '{if ($2 >= $1) {print 0} else if ($2 < $1){ print 1}}')
+    if [ $res2 -eq 1 ]; then
+      echo "Migration config to " $ver
+      bash config_migrations/$conf_migration $CONFIG_FILE $final_installation_path
+    fi
+done
+else
+   echo "No cofig"
+   exit 1
+fi
+}
+
+function full_update() {
+upgrade_xmpp
+upgrade_configs
+full_upgrade_xmppserverui
+restart_server
+}
+
+
+function full_update_ask() {
+  answer5="emp"
+  while [ "$answer5" != "" -o "$answer5" != "yes" -o "$answer5" != "no" -o "$answer5" != "n" -o "$answer5" != "y" -o "$answer5" != "Y" -o "$answer5" != "YES" -o "$answer5" != "N" -o "$answer5" != "NO" ]; do
+  if [ "$answer5" = "yes" -o "$answer5" = "y" -o "$answer5" = "" -o "$answer5" = "Y" -o "$answer5" = "YES" ]; then
+  	full_update
+  	break
+  elif [ "$answer5" = "no" -o "$answer5" = "n" -o "$answer5" == "N" -o "$answer5" == "NO" ]; then
+  	exit 1
+  	break
+  else
+  	echo "Do you want to continue? [Y/n]"
+  	read answer5
+  fi
+  done
+}
+
+function update_ask() {
+  answer4="emp"
+  while [ "$answer4" != "" -o "$answer4" != "yes" -o "$answer4" != "no" -o "$answer4" != "n" -o "$answer4" != "y" -o "$answer4" != "Y" -o "$answer4" != "YES" -o "$answer4" != "N" -o "$answer4" != "NO" ]; do
+  if [ "$answer4" = "yes" -o "$answer4" = "y" -o "$answer4" = "" -o "$answer4" = "Y" -o "$answer4" = "YES" ]; then
+  	update_server
+  	break
+  elif [ "$answer4" = "no" -o "$answer4" = "n" -o "$answer4" == "N" -o "$answer4" == "NO" ]; then
+  	exit 1
+  	break
+  else
+    echo "Update can delete your previous cached information in mnesia tables."
+    echo "Your server will be stoped during update"
+  	echo "Do you want to continue? [Y/n]"
+  	read answer4
+  fi
+  done
+}
+
+function search_versions() {
+final_installation_path=$installation_path
+lastsymbol=${final_installation_path: -1}
+if [ "$lastsymbol" = "/" ]; then
+  final_installation_path=${final_installation_path%?}
+fi
+echo $final_installation_path
+echo "Searching versions"
+versions="$(find $installation_path -name version -type f)"
+if [ "$versions" != "" ]
+then
+for version in $versions; do
+  xmpp_server=$(grep 'xabber-xmpp-server' $version)
+  if [ "$xmpp_server" != "" ]; then
+    new_xmpp_version=$(grep PROJECT_VERSION version | awk '{print $3}')
+    current_xmpp_version=$(grep PROJECT_VERSION $version | awk '{print $3}')
+    echo "Found server version " $current_xmpp_version
+    res=$(echo $new_xmpp_version $current_xmpp_version | awk  '{if ($2 >= $1) {print 0} else if ($2 < $1){ print 1}}')
+    if [ $res -eq 1 ]; then
+     upgrade_xmpp
+     restart_server
+    fi
+  fi
+done
+else
+    echo "No readable versions were found. We will made full update of server."
+    echo "It will rewrite your configuration files"
+    full_update_ask
+fi
+}
+
+function update_server() {
+echo "Start updating server"
+SYSTEMD_FILE="/etc/systemd/system/xabberserver.service"
+if [ -f $SYSTEMD_FILE ]
+then
+  sudo systemctl stop xabberserver.service
+  user=$(grep User /etc/systemd/system/xabberserver.service | sed -e 's/=/ /g' | awk '{print $2}')
+  group=$(grep Group /etc/systemd/system/xabberserver.service | sed -e 's/=/ /g' | awk '{print $2}')
+  installation_path0= grep PIDFile $SYSTEMD_FILE | sed -e "s/=/ /g" | awk {'print $2'} | sed -e "s/xabber_server.pid//g" > /dev/null
+  installation_path=$(grep PIDFile $SYSTEMD_FILE | sed -e "s/=/ /g" | awk {'print $2'} | sed -e "s/xabber_server.pid//g")
+  if [ -f $installation_path0 ]
+  then
+    search_versions
+  fi
+else
+  installation_path=""
+  echo "No previous installed Xabber Server was found"
+  echo "Please ensure what your server is stopped and continue"
+  echo -n "Enter your path to the Xabber Server. Please, enter absolute path. [ /opt/xabberserver/xabberserver/ ] : "
+  read installpath
+  if [ -f $installation_path ]
+  then
+    search_versions
+  else
+    echo "Wrong path."
+    install_regime
+  fi
+fi
+}
 
 function create_self_signed_cert() {
 apt-get install openssl >> $LOG
@@ -243,6 +459,10 @@ AREC="A record for $XABBER"
 SRVClient="SRV record for client"
 SRVServer="SRV record for server"
 
+if [[ $IPNOW == "" ]]; then
+IPNOW=$( hostname -I )
+fi
+
 echo ""
 start_spinner "A record for $XABBER"
 SERVERIP=$( ./dig +short $XABBER )
@@ -310,9 +530,10 @@ stop_spinner $?
 
 function get_cert() {
 start_spinner "Installing certbot"
-apt-get install -y certbot >> $LOG
+apt-get install -y snapd >> $LOG
+snap install --classic certbot
 stop_spinner $?
-certbot certonly --standalone --agree-tos -m $EMAIL -d $XABBER
+certbot certonly --apache --agree-tos -m $EMAIL -d $XABBER
 }
 
 function configure_apache() {
@@ -322,11 +543,20 @@ a2enmod headers proxy proxy_http ssl proxy_wstunnel rewrite
 a2dissite 000-default.conf
 EXP="s#DOMAIN#$XABBER#g"
 sh -c "sed -e $EXP <001-site.conf >/etc/apache2/sites-available/001-site.conf"
-sh -c "sed -e $EXP <001-site-ssl.conf >/etc/apache2/sites-available/001-site-ssl.conf"
-a2ensite 001-site.conf
-a2ensite 001-site-ssl.conf
+cp well-known.apache /etc/apache2/conf-available/letsencrypt.conf
+a2ensite 001-site
+a2enconf letsencrypt.conf
 systemctl restart apache2
 stop_spinner $?
+}
+
+function configure_ssl_apache() {
+  start_spinner "Configuring SSL for Apache"
+  EXP="s#DOMAIN#$XABBER#g"
+  sh -c "sed -e $EXP <001-site-ssl.conf >/etc/apache2/sites-available/001-site-ssl.conf"
+  a2ensite 001-site-ssl.conf
+  systemctl restart apache2
+  stop_spinner $?
 }
 
 function get_email() {
@@ -378,8 +608,9 @@ systemuser=$XABBERUSER
 GROUP=$XABBERGROUP
 
 mkdir -p $installpath
-get_cert
 configure_apache >> $LOG
+get_cert
+configure_ssl_apache >> $LOG
 ask_to_install_database
 copy_to_directory
 LOG="$installdir/installation.log"
@@ -576,7 +807,7 @@ function print_instructions()
 function web_install()
 {
 
-if [ -x $installdir/xmppserverui/service.sh ]
+if [ -x $installdir/xmppserverui/xabber-server ]
 then
  systemctl enable xabberserver.service
  systemctl start xabberserver.service
@@ -661,6 +892,7 @@ function install_regime()
 echo "Select the appropriate installation type:"
 echo "1) Quick ( ${BOLD}Use only on fresh installed Debian-based GNU/Linux system!${NORMAL} )"
 echo "2) Advanced"
+echo "3) Update Server"
 echo "0) Exit"
 choice=''
 echo -n "Make your choice : "
@@ -670,6 +902,7 @@ case $choice in
 exit 1;;
 1) get_info_and_decide;;
 2) expert_create_user;;
+3) update_ask;;
 *) echo "Wrong selection"
 install_regime
 ;;
@@ -693,23 +926,26 @@ fi
     cp -rp * $installdir
     mkdir -m 755 $installdir/user_images
     mkdir -m 755 $installdir/certs
+    mkdir -m 755 /etc/xabber/
     mv $installdir/server.pem $installdir/certs
     EXP00="s#INSTALL_PATH#$installdir#g"
     EXP01="s#USER#$systemuser#g"
     EXP02="s#GROUP#'$GROUP'#g"
-    EXP03="s#DEBUG=true#DEBUG=false#g"
     sh -c "sed -e $EXP00 <$installdir/xabberserver.service0 >$installdir/xabberserver.service1"
     sh -c "sed -e $EXP01 <$installdir/xabberserver.service1 >$installdir/xabberserver.service"
     sh -c "sed -e $EXP02 <$installdir/xabberserver.service >/etc/systemd/system/xabberserver.service"
-    sh -c "sed -e $EXP00 <$installdir/xmppserverui/service.sh.template >$installdir/xmppserverui/service.sh.2"
-    sh -c "sed -e $EXP03 <$installdir/xmppserverui/service.sh.2 >$installdir/xmppserverui/service.sh"
-    rm $installdir/xmppserverui/service.sh.2
-    rm $installdir/xmppserverui/service.sh.template
+    sh -c "sed -e $EXP00 <$installdir/xabber_server.ini0 >/etc/xabber/xabber_server.ini"
+    #sh -c "sed -e $EXP00 <$installdir/xmppserverui/service.sh.template >$installdir/xmppserverui/service.sh.2"
+    #sh -c "sed -e $EXP03 <$installdir/xmppserverui/service.sh.2 >$installdir/xmppserverui/service.sh"
+    #rm $installdir/xmppserverui/service.sh.2
+    #rm $installdir/xmppserverui/service.sh.template
     rm $installdir/xabberserver.service
     rm $installdir/xabberserver.service1
     rm $installdir/xabberserver.service0
+    rm $installdir/xabber_server.ini0
     rm $installdir/setup.sh
-    chmod 755 $installdir/xmppserverui/service.sh
+    chmod 755 $installdir/xmppserverui/xabber-server
+    chmod 755 /etc/xabber/xabber_server.ini
     chown -R $systemuser:"$GROUP" $installpath
     stop_spinner $?
 }
@@ -727,12 +963,6 @@ echo "Installation started"
     mkdir $installdir/user_images
     mkdir $installdir/certs
     mv $installdir/server.pem $installdir/certs
-    EXP00="s#INSTALL_PATH#$installdir#g"
-    EXP03="s#DEBUG=true#DEBUG=false#g"
-    sh -c "sed -e $EXP00 <$installdir/xmppserverui/service.sh.template >$installdir/xmppserverui/service.sh.2"
-    sh -c "sed -e $EXP03 <$installdir/xmppserverui/service.sh.2 >$installdir/xmppserverui/service.sh"
-    rm $installdir/xmppserverui/service.sh.2
-    rm $installdir/xmppserverui/service.sh.template
     rm $installdir/xabberserver.service0
     rm $installdir/setup.sh
     chmod 755 $installdir/xmppserverui/service.sh
