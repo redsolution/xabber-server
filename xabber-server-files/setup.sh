@@ -530,8 +530,7 @@ stop_spinner $?
 
 function get_cert() {
 start_spinner "Installing certbot"
-apt-get install -y snapd >> $LOG
-snap install --classic certbot
+apt-get install -y certbot python-certbot-apache  >> $LOG
 stop_spinner $?
 certbot certonly --apache --agree-tos -m $EMAIL -d $XABBER
 }
@@ -542,9 +541,9 @@ apt-get install -y apache2
 a2enmod headers proxy proxy_http ssl proxy_wstunnel rewrite
 a2dissite 000-default.conf
 EXP="s#DOMAIN#$XABBER#g"
-sh -c "sed -e $EXP <001-site.conf >/etc/apache2/sites-available/001-site.conf"
+sh -c "sed -e $EXP <001-site-default.conf >/etc/apache2/sites-available/001-site-default.conf"
 cp well-known.apache /etc/apache2/conf-available/letsencrypt.conf
-a2ensite 001-site
+a2ensite 001-site-default
 a2enconf letsencrypt.conf
 systemctl restart apache2
 stop_spinner $?
@@ -553,7 +552,10 @@ stop_spinner $?
 function configure_ssl_apache() {
   start_spinner "Configuring SSL for Apache"
   EXP="s#DOMAIN#$XABBER#g"
+  sh -c "sed -e $EXP <001-site.conf >/etc/apache2/sites-available/001-site.conf"
   sh -c "sed -e $EXP <001-site-ssl.conf >/etc/apache2/sites-available/001-site-ssl.conf"
+  a2dissite 001-site-default.conf
+  a2ensite 001-site
   a2ensite 001-site-ssl.conf
   systemctl restart apache2
   stop_spinner $?
