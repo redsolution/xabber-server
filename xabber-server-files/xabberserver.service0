@@ -3,6 +3,7 @@ Description=Xabber Server
 After=network.target
 
 [Service]
+Type=forking
 PIDFile=INSTALL_PATH/xabber_server.pid
 User=USER
 Group=GROUP
