@@ -854,16 +854,16 @@ if [ "$installpath" = "" ]; then
 fi
 
 if [ ! -d "$installpath" ]; then
-  echo -n "There is no such directory. Create a directory please. Do you want to create it? Y/n "
+  echo -n "There is no such directory. Create a directory please. Do you want to create it? y/n "
   read answer
-if [ "$answer" = "yes" -o "$answer" = "y" -o "$answer" = "" ]; then
+if [ "$answer" = "yes" -o "$answer" = "y" -o "$answer" = "" -o "$answer" = "Y" -o "$answer" = "YES" ]; then
   mkdir -p $installpath
 fi
 fi
 
-echo -n "Create special user for xabberserver? Y/n "
+echo -n "Create special user for xabberserver? y/n "
 read answer0
-if [ "$answer0" = "yes" -o "$answer0" = "y" -o "$answer0" = "" ]; then
+if [ "$answer0" = "yes" -o "$answer0" = "y" -o "$answer0" = "" -o "$answer0" = "Y" -o "$answer0" = "YES" ]; then
   systemuser=$XABBERUSER
   echo -n "Please, enter user for xabberserver. [ $systemuser ] : "
   read systemuser
@@ -935,10 +935,6 @@ fi
     sh -c "sed -e $EXP01 <$installdir/xabberserver.service1 >$installdir/xabberserver.service"
     sh -c "sed -e $EXP02 <$installdir/xabberserver.service >/etc/systemd/system/xabberserver.service"
     sh -c "sed -e $EXP00 <$installdir/xabber_server.ini0 >/etc/xabber/xabber_server.ini"
-    #sh -c "sed -e $EXP00 <$installdir/xmppserverui/service.sh.template >$installdir/xmppserverui/service.sh.2"
-    #sh -c "sed -e $EXP03 <$installdir/xmppserverui/service.sh.2 >$installdir/xmppserverui/service.sh"
-    #rm $installdir/xmppserverui/service.sh.2
-    #rm $installdir/xmppserverui/service.sh.template
     rm $installdir/xabberserver.service
     rm $installdir/xabberserver.service1
     rm $installdir/xabberserver.service0
