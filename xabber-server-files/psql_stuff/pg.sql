@@ -91,6 +91,14 @@ CREATE TABLE archive (
     id SERIAL,
     kind text,
     nick text,
+    image boolean NOT NULL DEFAULT false,
+    document boolean NOT NULL DEFAULT false,
+    audio boolean NOT NULL DEFAULT false,
+    video boolean NOT NULL DEFAULT false,
+    geo boolean NOT NULL DEFAULT false,
+    sticker boolean NOT NULL DEFAULT false,
+    voice boolean NOT NULL DEFAULT false,
+    encrypted boolean NOT NULL DEFAULT false,
     created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
@@ -439,6 +447,7 @@ CREATE TABLE groupchats (
     domains text,
     status text NOT NULL DEFAULT 'active',
     parent_chat text DEFAULT '0',
+    created_at timestamp without time zone not null default now(),
     PRIMARY KEY (server_host, localpart)
 );
 
@@ -454,7 +463,7 @@ CREATE TABLE groupchat_users (
     nickname text default '',
     parse_vcard timestamp NOT NULL default now(),
     parse_avatar text NOT NULL default 'yes',
-    badge text,
+    badge text NOT NULL default '',
     chatgroup text NOT NULL REFERENCES groupchats (jid) ON DELETE CASCADE,
     subscription text NOT NULL,
     p2p_state text DEFAULT 'true',
@@ -476,6 +485,7 @@ CREATE TABLE groupchat_users_vcard (
     fn text,
     nickname text,
     image text,
+    image_type text,
     hash text,
     fullupdate text
 );
@@ -491,8 +501,7 @@ CREATE TABLE groupchat_policy (
     username text NOT NULL,
     chatgroup text NOT NULL REFERENCES groupchats (jid) ON DELETE CASCADE,
     right_name text NOT NULL REFERENCES groupchat_rights(name),
-    valid_from timestamp NOT NULL,
-    valid_until timestamp NOT NULL,
+    valid_until bigint NOT NULL default 0,
     issued_by text NOT NULL,
     issued_at timestamp NOT NULL,
     CONSTRAINT UC_groupchat_policy UNIQUE (username,chatgroup,right_name)
@@ -500,15 +509,15 @@ CREATE TABLE groupchat_policy (
 
 INSERT INTO groupchat_rights (name,description,type) values
 ('send-messages','Send messages','restriction'),
+('send-stickers','Send stickers','restriction'),
+('send-voice','Send voice messages','restriction'),
+('send-invitations','Send invitations', 'restriction'),
 ('read-messages','Read messages','restriction'),
 ('owner','Owner','permission'),
-('restrict-participants','Restrict participants','permission'),
-('block-participants','Block participants','permission'),
-('send-invitations','Send invitations','restriction'),
-('administrator','Administrator','permission'),
-('change-badges','Change badges','permission'),
-('change-nicknames','Change nicknames','permission'),
-('delete-messages','Delete messages','permission')
+('change-group','Change group','permission'),
+('change-users','Change users','permission'),
+('set-restrictions','Set restrictions','permission'),
+('set-permissions','Set permissions','permission')
 ;
 
 CREATE TABLE groupchat_block (
@@ -566,7 +575,15 @@ CREATE TABLE conversation_metadata(
     displayed_until text NOT NULL DEFAULT '0',
     updated_at bigint NOT NULL DEFAULT 0,
     metadata_updated_at bigint NOT NULL DEFAULT 0,
-    CONSTRAINT uc_conversation_metadata UNIQUE (username,server_host,conversation,conversation_thread)
+    status text NOT NULL DEFAULT 'active',
+    incognito boolean NOT NULL DEFAULT false,
+    p2p boolean NOT NULL DEFAULT false,
+    pinned boolean NOT NULL DEFAULT false,
+    pinned_at bigint NOT NULL DEFAULT 0,
+    archived boolean NOT NULL DEFAULT false,
+    archived_at bigint NOT NULL DEFAULT 0,
+    encrypted boolean NOT NULL DEFAULT false,
+    CONSTRAINT uc_conversation_metadata UNIQUE (username, server_host, conversation, conversation_thread, encrypted)
     );
 
 ALTER TABLE archive ADD CONSTRAINT unique_timestamp UNIQUE (timestamp, server_host);
@@ -597,7 +614,8 @@ CREATE TABLE message_retract(
     server_host text NOT NULL,
     xml text,
     version bigint,
-    CONSTRAINT uc_retract_message_versions UNIQUE (username,server_host,xml,version)
+    type text not null default '',
+    CONSTRAINT uc_retract_message_versions UNIQUE (username,server_host,type,version)
     );
 
 CREATE TABLE foreign_message_stanza_id(
@@ -633,6 +651,7 @@ CREATE TABLE special_messages(
 	    conversation text NOT NULL,
 	    timestamp BIGINT NOT NULL,
 	    type text NOT NULL DEFAULT 'chat',
+	    origin_id text,
 	    CONSTRAINT uc_special_message UNIQUE (username,server_host,timestamp)
 	    );
 
@@ -690,3 +709,16 @@ CREATE TABLE channel_policy (
 INSERT INTO channel_rights (name,description,type) values
   ('owner','Owner','permission')
 ;
+
+CREATE TABLE xabber_push_session (
+    username text NOT NULL,
+    server_host text NOT NULL,
+    timestamp bigint NOT NULL,
+    service text NOT NULL,
+    node text NOT NULL,
+    xml text NOT NULL,
+    cipher text NOT NULL,
+    key text NOT NULL,
+    PRIMARY KEY (server_host, username, timestamp)
+);
+CREATE UNIQUE INDEX i_xabber_push_session_susn ON xabber_push_session USING btree (server_host, username, service, node);
