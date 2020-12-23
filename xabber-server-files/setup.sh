@@ -532,6 +532,7 @@ function get_cert() {
 start_spinner "Installing certbot"
 apt-get install -y certbot python-certbot-apache  >> $LOG
 stop_spinner $?
+[ -d /var/lib/letsencrypt ] && chmod 755 /var/lib/letsencrypt || mkdir -m 755 /var/lib/letsencrypt
 certbot certonly --apache --agree-tos -m $EMAIL -d $XABBER
 }
 
