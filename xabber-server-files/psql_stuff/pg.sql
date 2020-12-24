@@ -445,7 +445,7 @@ CREATE TABLE groupchats (
     message bigint DEFAULT 0,
     contacts text,
     domains text,
-    status text NOT NULL DEFAULT 'active',
+    status text NOT NULL DEFAULT 'discussion',
     parent_chat text DEFAULT '0',
     created_at timestamp without time zone not null default now(),
     PRIMARY KEY (server_host, localpart)
