@@ -461,14 +461,14 @@ CREATE TABLE groupchat_users (
     avatar_url text,
     avatar_size integer not null default 0,
     nickname text default '',
-    parse_vcard timestamp NOT NULL default now(),
+    parse_vcard timestamp NOT NULL default timezone('utc'::text, now()),
     parse_avatar text NOT NULL default 'yes',
     badge text NOT NULL default '',
     chatgroup text NOT NULL REFERENCES groupchats (jid) ON DELETE CASCADE,
     subscription text NOT NULL,
     p2p_state text DEFAULT 'true',
-    last_seen timestamp NOT NULL default now(),
-    user_updated_at timestamp NOT NULL default now(),
+    last_seen timestamp NOT NULL default timezone('utc'::text, now()),
+    user_updated_at timestamp NOT NULL default timezone('utc'::text, now()),
     CONSTRAINT UC_groupchat_users UNIQUE (username,chatgroup),
     CONSTRAINT UC_groupchat_users_id UNIQUE (id)
 );
