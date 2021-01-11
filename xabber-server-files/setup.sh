@@ -83,7 +83,11 @@ if [ -d $lib_path ]; then
   rm -fr $final_installation_path/erts*
   rm -fr $final_installation_path/var/lib/ejabberd/*
   echo "Copy new files to " $final_installation_path
-  cp -rp *  $final_installation_path
+  cp -rp lib  $final_installation_path
+  cp -rp etc  $final_installation_path
+  cp -rp psql_lib $final_installation_path
+  cp -rp erts* $final_installation_path
+  cp -rp bin $final_installation_path
   chown -R $user:$group $final_installation_path
   #find $final_installation_path -type f -exec chmod 644 {};
   #find $final_installation_path -type d -exec chmod 755 {};
