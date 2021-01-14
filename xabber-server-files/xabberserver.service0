@@ -10,8 +10,8 @@ Group=GROUP
 LimitNOFILE=65536
 Restart=on-failure
 RestartSec=5
-ExecStart=INSTALL_PATH/xmppserverui/xabber-server start
-ExecStop=INSTALL_PATH/xmppserverui/xabber-server stop
+ExecStart=INSTALL_PATH/panel/xabber-server start
+ExecStop=INSTALL_PATH/panel/xabber-server stop
 ExecStartPost=/bin/sleep 0.1
 
 [Install]

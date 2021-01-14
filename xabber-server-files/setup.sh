@@ -61,33 +61,34 @@ rm $final_installation_path/setup.sh
 chmod 755 /etc/xabber/xabber_server.ini
 }
 
-function full_upgrade_xmppserverui() {
-  echo "Upgrade xmppserverui"
+function full_upgrade_panel() {
+  echo "Upgrade panel"
   cp $final_installation_path/xmppserverui/xmppserverui.sqlite3 $final_installation_path
   rm -fr $final_installation_path/xmppserverui
-  cp -rp xmppserverui/ $final_installation_path
-  $final_installation_path/xmppserverui/xabber-server migrate
+  cp -rp panel/ $final_installation_path
+  $final_installation_path/panel/xabber-server migrate
   touch $final_installation_path/.installation_lock
 }
 
 function upgrade_xmpp() {
 set +e
 echo "Upgrade from " $current_xmpp_version " to " $new_xmpp_version
-lib_path="$final_installation_path/lib"
+xmpp_server_dir=$final_installation_path/xmppserver
+lib_path="$xmpp_server_dir/lib"
 echo $lib_path
 if [ "$final_installation_path" != "" ]; then
 if [ -d $lib_path ]; then
   echo "Deleting old files"
-  rm -fr $final_installation_path/lib/*
-  rm -fr $final_installation_path/bin/*
-  rm -fr $final_installation_path/erts*
-  rm -fr $final_installation_path/var/lib/ejabberd/*
-  echo "Copy new files to " $final_installation_path
-  cp -rp lib  $final_installation_path
-  cp -rp etc  $final_installation_path
+  rm -fr $lib_path/*
+  rm -fr $xmpp_server_dir/bin/*
+  rm -fr $xmppserver/erts*
+  rm -fr $xmppserver/var/lib/ejabberd/*
+  echo "Copy new files to " $xmpp_server_dir
+  cp -rp xmppserver/lib  $xmpp_server_dir
+  cp -rp xmppserver/etc  $xmpp_server_dir
   cp -rp psql_lib $final_installation_path
-  cp -rp erts* $final_installation_path
-  cp -rp bin $final_installation_path
+  cp -rp xmppserver/erts* $xmpp_server_dir
+  cp -rp xmppserver/bin $xmpp_server_dir
   chown -R $user:$group $final_installation_path
   #find $final_installation_path -type f -exec chmod 644 {};
   #find $final_installation_path -type d -exec chmod 755 {};
@@ -100,7 +101,7 @@ fi
 
 function sql_migration() {
 echo "Try to do SQL Migrations"
-CONFIG_FILE="$final_installation_path/etc/ejabberd/ejabberd.yml"
+CONFIG_FILE="$xmpp_server_dir/etc/ejabberd/ejabberd.yml"
 if [ -f $CONFIG_FILE ]; then
 sql_server=$(grep sql_server $CONFIG_FILE | awk '{print $2}' | sed -e 's/"//g')
 sql_username=$(grep sql_username $CONFIG_FILE | awk '{print $2}' | sed -e 's/"//g')
@@ -126,7 +127,7 @@ fi
 }
 
 function search_in_config() {
-CONFIG_FILE="$final_installation_path/etc/ejabberd/ejabberd.yml"
+CONFIG_FILE="$xmpp_server_dir/etc/ejabberd/ejabberd.yml"
 if [ -f $CONFIG_FILE ]; then
 conf_migrations=$(ls config_migrations)
 for conf_migration in $conf_migrations; do
@@ -146,7 +147,7 @@ fi
 function full_update() {
 upgrade_xmpp
 upgrade_configs
-full_upgrade_xmppserverui
+full_upgrade_panel
 restart_server
 }
 
@@ -252,7 +253,7 @@ openssl req -new -x509 -newkey rsa:4096 -days 3650 -nodes -out $installdir/ser.p
 }
 
 function create_predifined() {
-PRECONFIG="$installdir/xmppserverui/predefined_config.json"
+PRECONFIG="$installdir/panel/predefined_config.json"
 echo "{" > $PRECONFIG
 echo "  \"virtual_host\": \"$DOMAIN\"," >> $PRECONFIG
 echo "  \"http_host\": \"$XABBER\"," >> $PRECONFIG
@@ -810,15 +811,30 @@ function print_instructions()
  done
 }
 
+function print_instructions2()
+{
+ IP=$( hostname -I )
+ HOSTS=$( hostname -f )
+ echo "Welcome to Xabber server."
+ for item in ${IP[*]}
+ do
+  printf "To continue installation process, open http://%s:8000\n" $item
+ done
+ for hst in ${HOSTS[*]}
+ do
+  printf "To continue installation process, open http://%s:8000\n" $hst
+ done
+}
+
 
 function web_install()
 {
 
-if [ -x $installdir/xmppserverui/xabber-server ]
+if [ -x $installdir/panel/xabber-server ]
 then
  systemctl enable xabberserver.service
  systemctl start xabberserver.service
- print_instructions
+ print_instructions2
 else
  echo "You don't have execute permission. Please check your permissions."
  echo "namei -l $installdir"
@@ -947,7 +963,7 @@ fi
     rm $installdir/xabberserver.service0
     rm $installdir/xabber_server.ini0
     rm $installdir/setup.sh
-    chmod 755 $installdir/xmppserverui/xabber-server
+    chmod 755 $installdir/panel/xabber-server
     chmod 755 /etc/xabber/xabber_server.ini
     chown -R $systemuser:"$GROUP" $installpath
     stop_spinner $?
@@ -968,10 +984,13 @@ echo "Installation started"
     mv $installdir/server.pem $installdir/certs
     rm $installdir/xabberserver.service0
     rm $installdir/setup.sh
-    chmod 755 $installdir/xmppserverui/service.sh
+    EXP00="s#INSTALL_PATH#$installdir#g"
+    sh -c "sed -e $EXP00 <$installdir/xabber_server.ini0 >$installdir/xabber_server.ini"
+    chmod 755 $installdir/panel/xabber-server
     chown -R $systemuser:"$GROUP" $installdir
+    print_instructions2
     echo "To start xabberserver use:"
-    echo "$installdir/xmppserverui/service.sh start"
+    echo "$installdir/panel/xabber-server start"
 }
 
 if [[ !$system -eq "x86_64" ]]; then

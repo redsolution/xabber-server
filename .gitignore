@@ -4,3 +4,5 @@ xabber-web/
 makeself/
 panel-builder/
 xabberserver_installer*
+rel/
+xabber-xmpp-server/
